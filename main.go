@@ -20,7 +20,7 @@ import (
 const (
 	apiURL     = "https://api.openai.com/v1/chat/completions"
 	apiReqBody = `{
-        "model": "gpt-3.5-turbo",
+        "model": "%s",
         "messages": [
             {
                 "role": "system",
@@ -37,9 +37,11 @@ const (
 func main() {
 	viper.SetDefault("apiKey", "")
 	viper.SetDefault("httpProxy", "")
+	viper.SetDefault("timeOut", 30)
+	viper.SetDefault("model", "gpt-4-turbo")
 	viper.SetConfigName("gpterm")
 	viper.SetConfigType("toml")
-	viper.AddConfigPath("$HOME/.config")
+	viper.AddConfigPath(".")
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			log.Println(viper.SafeWriteConfig())
@@ -57,7 +59,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer([]byte(fmt.Sprintf(apiReqBody, input))))
+	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer([]byte(fmt.Sprintf(apiReqBody, viper.GetString("model"), input))))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -72,7 +74,7 @@ func main() {
 		Transport: &http.Transport{
 			Proxy: http.ProxyURL(proxyUrl),
 		},
-		Timeout: 8 * time.Second,
+        Timeout: time.Duration(viper.GetInt("timeOut") * int(time.Second)),
 	}).Do(req)
 	if err != nil {
 		log.Fatal(err)
