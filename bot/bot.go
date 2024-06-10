@@ -98,3 +98,5 @@ func Ask(input string) string {
 
 	return apiRes.Choices[0].Message.Content
 }
+
+func GetModel() string { return viper.GetString("model") }

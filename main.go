@@ -94,6 +94,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	type botMsg struct {
 		content string
 	}
+	type errMsg error
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -101,6 +102,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlC, tea.KeyEsc:
 			return m, tea.Quit
 		case tea.KeyEnter:
+			if !m.textarea.Focused() {
+				return m, nil
+			}
+			m.textarea.Blur()
 			input := m.textarea.Value()
 			m.textarea.Reset()
 			renderedInput, err := messageRenderer.Render(input)
@@ -117,10 +122,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		m.messages = append(m.messages, botStyle.Render("Bot: ")+renderedOutput)
+		m.messages = append(m.messages, botStyle.Render(fmt.Sprintf("Bot (%s): ", bot.GetModel()))+renderedOutput)
 		m.viewport.SetContent(strings.Join(m.messages, "\n"))
 		m.viewport.GotoBottom()
-	case error:
+		m.textarea.Focus()
+	case errMsg:
 		log.Fatal(msg)
 		return m, nil
 	}
