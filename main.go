@@ -91,6 +91,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.viewport, vpCmd = m.viewport.Update(msg)
 	m.textarea, taCmd = m.textarea.Update(msg)
 
+	type botMsg struct {
+		content string
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -99,19 +103,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnter:
 			input := m.textarea.Value()
 			m.textarea.Reset()
-			renderedOutput, err := messageRenderer.Render(input)
+			renderedInput, err := messageRenderer.Render(input)
 			if err != nil {
 				log.Fatal(err)
 			}
-			m.messages = append(m.messages, youStyle.Render("You: ")+renderedOutput)
-			renderedOutput, err = messageRenderer.Render(bot.Ask(input))
-			if err != nil {
-				log.Fatal(err)
-			}
-			m.messages = append(m.messages, botStyle.Render("Bot: ")+renderedOutput)
+			m.messages = append(m.messages, youStyle.Render("You: ")+renderedInput)
 			m.viewport.SetContent(strings.Join(m.messages, "\n"))
 			m.viewport.GotoBottom()
+			return m, tea.Batch(func() tea.Msg { return botMsg{bot.Ask(input)} }, vpCmd, taCmd)
 		}
+	case botMsg:
+		renderedOutput, err := messageRenderer.Render(msg.content)
+		if err != nil {
+			log.Fatal(err)
+		}
+		m.messages = append(m.messages, botStyle.Render("Bot: ")+renderedOutput)
+		m.viewport.SetContent(strings.Join(m.messages, "\n"))
+		m.viewport.GotoBottom()
 	case error:
 		log.Fatal(msg)
 		return m, nil
