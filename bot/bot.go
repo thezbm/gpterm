@@ -19,17 +19,15 @@ const (
 	apiReqBody = `{
         "model": "%s",
         "messages": [
-            {
-                "role": "system",
-                "content": "Make sure all your responses are in Markdown format."
-            },
-            {
-                "role": "user",
-                "content": "%s"
-            }
+            %s
         ]
     }`
 )
+
+type messageStruct struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
 
 func SetUp() {
 	viper.SetDefault("apiKey", "")
@@ -52,7 +50,11 @@ func SetUp() {
 }
 
 func Ask(input string) string {
-	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer([]byte(fmt.Sprintf(apiReqBody, viper.GetString("model"), strings.TrimSpace(input)))))
+	userMessage, err := json.Marshal(messageStruct{"user", input})
+	if err != nil {
+		log.Fatal(err)
+	}
+	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer([]byte(fmt.Sprintf(apiReqBody, viper.GetString("model"), userMessage))))
 	if err != nil {
 		log.Fatal(err)
 	}
