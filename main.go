@@ -16,9 +16,12 @@ import (
 )
 
 var (
-	youStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#ed8796")).Bold(true).Border(lipgloss.RoundedBorder(), true, true, true, true)
-	botStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#7dc4e4")).Bold(true).Border(lipgloss.RoundedBorder(), true, true, true, true)
-	messageStyle = "dark"
+	youStyle           = lipgloss.NewStyle().Foreground(lipgloss.Color("#ed8796")).Bold(true).Border(lipgloss.RoundedBorder(), true, true, true, true)
+	botStyle           = lipgloss.NewStyle().Foreground(lipgloss.Color("#7dc4e4")).Bold(true).Border(lipgloss.RoundedBorder(), true, true, true, true)
+	messageRenderer, _ = glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+		glamour.WithWordWrap(0),
+	)
 )
 
 func main() {
@@ -36,7 +39,7 @@ type model struct {
 }
 
 func initialModel() model {
-	vp := viewport.New(100, 35)
+	vp := viewport.New(120, 35)
 	vp.SetContent(`Have a chat with Bot!
 Type a message and press Enter to send.`)
 	vp.KeyMap = viewport.KeyMap{
@@ -64,7 +67,7 @@ Type a message and press Enter to send.`)
 	ta.FocusedStyle.CursorLine = lipgloss.NewStyle()
 	ta.Prompt = "┃ "
 	ta.ShowLineNumbers = false
-	ta.SetWidth(100)
+	ta.SetWidth(120)
 	ta.SetHeight(5)
 	ta.CharLimit = 1000
 	ta.KeyMap.InsertNewline.SetEnabled(false)
@@ -96,12 +99,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnter:
 			input := m.textarea.Value()
 			m.textarea.Reset()
-			renderedOutput, err := glamour.Render(input, messageStyle)
+			renderedOutput, err := messageRenderer.Render(input)
 			if err != nil {
 				log.Fatal(err)
 			}
 			m.messages = append(m.messages, youStyle.Render("You: ")+renderedOutput)
-			renderedOutput, err = glamour.Render(bot.Ask(input), messageStyle)
+			renderedOutput, err = messageRenderer.Render(bot.Ask(input))
 			if err != nil {
 				log.Fatal(err)
 			}
