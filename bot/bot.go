@@ -54,10 +54,16 @@ func SetUp() {
 			if err := viper.SafeWriteConfig(); err != nil {
 				panic(fmt.Errorf("fatal error config file: %w", err))
 			}
-			fmt.Println("No config file found. A default config file is created. Please set the apiKey and the httpProxy.")
+			fmt.Printf("No config file found.\nA default config file is created at [%s].\nPlease set the apiKey (and optionally the httpProxy) before chatting with bot.\n", configPath)
+			os.Exit(0)
 		} else {
 			panic(fmt.Errorf("fatal error config file: %w", err))
 		}
+	}
+
+	if viper.GetString("apiKey") == "" {
+		fmt.Println("Please set the apiKey before chatting with bot.")
+		os.Exit(0)
 	}
 }
 
