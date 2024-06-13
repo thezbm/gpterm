@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/gabezbm/gpterm/bot"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -22,6 +24,10 @@ var (
 		glamour.WithAutoStyle(),
 		glamour.WithWordWrap(120),
 	)
+	spinnerStyle = spinner.Spinner{
+		Frames: []string{"∙∙∙∙∙", "●∙∙∙∙", "∙●∙∙∙", "∙∙●∙∙", "∙∙∙●∙", "∙∙∙∙●"},
+		FPS:    time.Second / 5,
+	}
 )
 
 func main() {
@@ -35,6 +41,7 @@ func main() {
 type model struct {
 	viewport viewport.Model
 	textarea textarea.Model
+	spinner  spinner.Model
 	messages []string
 }
 
@@ -72,9 +79,13 @@ Type a message and press Enter to send.`)
 	ta.CharLimit = 1000
 	ta.KeyMap.InsertNewline.SetEnabled(false)
 
+	sp := spinner.New()
+	sp.Spinner = spinnerStyle
+
 	return model{
 		viewport: vp,
 		textarea: ta,
+		spinner:  sp,
 		messages: []string{},
 	}
 }
@@ -87,6 +98,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		vpCmd tea.Cmd
 		taCmd tea.Cmd
+		spCmd tea.Cmd
 	)
 	m.viewport, vpCmd = m.viewport.Update(msg)
 	m.textarea, taCmd = m.textarea.Update(msg)
@@ -113,19 +125,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				log.Fatal(err)
 			}
 			m.messages = append(m.messages, youStyle.Render("You: ")+renderedInput)
+			m.messages = append(m.messages, botStyle.Render(m.spinner.View())+"\n")
 			m.viewport.SetContent(strings.Join(m.messages, "\n"))
 			m.viewport.GotoBottom()
-			return m, tea.Batch(func() tea.Msg { return botMsg{bot.Ask(input)} }, vpCmd, taCmd)
+			return m, tea.Batch(func() tea.Msg { return botMsg{bot.Ask(input)} }, m.spinner.Tick, vpCmd, taCmd)
 		}
 	case botMsg:
 		renderedOutput, err := messageRenderer.Render(msg.content)
 		if err != nil {
 			log.Fatal(err)
 		}
-		m.messages = append(m.messages, botStyle.Render(fmt.Sprintf("Bot (%s): ", bot.GetModel()))+renderedOutput)
+		m.messages[len(m.messages)-1] = botStyle.Render(fmt.Sprintf("Bot (%s): ", bot.GetModel())) + renderedOutput
 		m.viewport.SetContent(strings.Join(m.messages, "\n"))
 		m.viewport.GotoBottom()
 		m.textarea.Focus()
+	case spinner.TickMsg:
+		if m.textarea.Focused() {
+			return m, nil
+		}
+		m.spinner, spCmd = m.spinner.Update(msg)
+		m.messages[len(m.messages)-1] = botStyle.Render(m.spinner.View())+"\n"
+		m.viewport.SetContent(strings.Join(m.messages, "\n"))
+		return m, spCmd
 	case errMsg:
 		log.Fatal(msg)
 		return m, nil
