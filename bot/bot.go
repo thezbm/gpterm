@@ -8,6 +8,8 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -34,11 +36,21 @@ func SetUp() {
 	viper.SetDefault("model", "gpt-3.5-turbo")
 	viper.SetDefault("httpProxy", "")
 	viper.SetDefault("timeOut", 30)
+
+	userHomeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatal(err)
+	}
+	configPath := path.Join(userHomeDir, ".config/gpterm")
+	viper.AddConfigPath(configPath)
 	viper.SetConfigName("gpterm")
 	viper.SetConfigType("toml")
-	viper.AddConfigPath(".")
+
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			if err := os.MkdirAll(configPath, 0755); err != nil {
+				log.Fatal(err)
+			}
 			if err := viper.SafeWriteConfig(); err != nil {
 				panic(fmt.Errorf("fatal error config file: %w", err))
 			}
