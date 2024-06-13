@@ -20,7 +20,7 @@ var (
 	botStyle           = lipgloss.NewStyle().Foreground(lipgloss.Color("#7dc4e4")).Bold(true).Border(lipgloss.RoundedBorder(), true, true, true, true)
 	messageRenderer, _ = glamour.NewTermRenderer(
 		glamour.WithAutoStyle(),
-		glamour.WithWordWrap(0),
+		glamour.WithWordWrap(120),
 	)
 )
 
