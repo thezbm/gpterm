@@ -47,8 +47,11 @@ type model struct {
 
 func initialModel() model {
 	vp := viewport.New(120, 35)
-	vp.SetContent(`Have a chat with Bot!
-Type a message and press Enter to send.`)
+	renderedOutput, err := messageRenderer.Render("Have a chat with Bot!\nType a message and press `Enter` to send.")
+	if err != nil {
+		log.Fatal(err)
+	}
+	vp.SetContent(botStyle.Render(fmt.Sprintf("Bot (%s): ", bot.GetModel())) + renderedOutput)
 	vp.KeyMap = viewport.KeyMap{
 		PageUp: key.NewBinding(
 			key.WithKeys("pgup"),
@@ -144,7 +147,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.spinner, spCmd = m.spinner.Update(msg)
-		m.messages[len(m.messages)-1] = botStyle.Render(m.spinner.View())+"\n"
+		m.messages[len(m.messages)-1] = botStyle.Render(m.spinner.View()) + "\n"
 		m.viewport.SetContent(strings.Join(m.messages, "\n"))
 		return m, spCmd
 	case errMsg:
