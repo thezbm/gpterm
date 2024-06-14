@@ -16,21 +16,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-const (
-	apiURL     = "https://api.openai.com/v1/chat/completions"
-	apiReqBody = `{
-        "model": "%s",
-        "messages": [
-            %s
-        ]
-    }`
-)
-
-type messageStruct struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
 func SetUp() {
 	viper.SetDefault("apiKey", "")
 	viper.SetDefault("model", "gpt-3.5-turbo")
@@ -67,12 +52,31 @@ func SetUp() {
 	}
 }
 
+const (
+	apiURL     = "https://api.openai.com/v1/chat/completions"
+	apiReqBody = `{
+        "model": "%s",
+        "messages": %s
+    }`
+)
+
+type messageStruct struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+var (
+	messages []messageStruct
+)
+
 func Ask(input string) string {
-	userMessage, err := json.Marshal(messageStruct{"user", input})
+	messages = append(messages, messageStruct{"user", input})
+	messagesBytes, err := json.Marshal(messages)
 	if err != nil {
 		log.Fatal(err)
 	}
-	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer([]byte(fmt.Sprintf(apiReqBody, viper.GetString("model"), userMessage))))
+
+	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer([]byte(fmt.Sprintf(apiReqBody, viper.GetString("model"), messagesBytes))))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -114,7 +118,10 @@ func Ask(input string) string {
 		log.Fatal(err)
 	}
 
-	return apiRes.Choices[0].Message.Content
+	output := apiRes.Choices[0].Message.Content
+	messages = append(messages, messageStruct{"assistant", output})
+
+	return output
 }
 
 func GetModel() string { return viper.GetString("model") }
