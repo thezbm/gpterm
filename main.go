@@ -17,36 +17,40 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var (
-	youStyle           = lipgloss.NewStyle().Foreground(lipgloss.Color("#ed8796")).Bold(true).Border(lipgloss.RoundedBorder(), true, true, true, true)
-	botStyle           = lipgloss.NewStyle().Foreground(lipgloss.Color("#7dc4e4")).Bold(true).Border(lipgloss.RoundedBorder(), true, true, true, true)
-	messageRenderer, _ = glamour.NewTermRenderer(
-		glamour.WithAutoStyle(),
-		glamour.WithWordWrap(120),
-	)
-	spinnerStyle = spinner.Spinner{
-		Frames: []string{"∙∙∙∙∙", "●∙∙∙∙", "∙●∙∙∙", "∙∙●∙∙", "∙∙∙●∙", "∙∙∙∙●"},
-		FPS:    time.Second / 5,
-	}
-)
-
 func main() {
 	bot.SetUp()
-	p := tea.NewProgram(initialModel())
+	p := tea.NewProgram(initialModel(), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
 	}
 }
 
+var (
+	youStyle           = lipgloss.NewStyle().Foreground(lipgloss.Color("#ed8796")).Bold(true).Border(lipgloss.RoundedBorder(), true, true, true, true)
+	botStyle           = lipgloss.NewStyle().Foreground(lipgloss.Color("#7dc4e4")).Bold(true).Border(lipgloss.RoundedBorder(), true, true, true, true)
+	messageRenderer, _ = glamour.NewTermRenderer(glamour.WithAutoStyle())
+	spinnerStyle       = spinner.Spinner{
+		Frames: []string{"∙∙∙∙∙", "●∙∙∙∙", "∙●∙∙∙", "∙∙●∙∙", "∙∙∙●∙", "∙∙∙∙●"},
+		FPS:    time.Second / 5,
+	}
+)
+
+const (
+	modelMaxWidth     = 120
+	textareaMaxHeight = 10
+)
+
 type model struct {
-	viewport viewport.Model
-	textarea textarea.Model
-	spinner  spinner.Model
-	messages []string
+	viewport                  viewport.Model
+	textarea                  textarea.Model
+	spinner                   spinner.Model
+	messages                  []string
+	height, width             int
+	screenHeight, screenWidth int
 }
 
 func initialModel() model {
-	vp := viewport.New(120, 35)
+	vp := viewport.New(0, 0)
 	renderedOutput, err := messageRenderer.Render("Have a chat with Bot!\nType a message and press `Enter` to send.")
 	if err != nil {
 		log.Fatal(err)
@@ -77,9 +81,6 @@ func initialModel() model {
 	ta.FocusedStyle.CursorLine = lipgloss.NewStyle()
 	ta.Prompt = "┃ "
 	ta.ShowLineNumbers = false
-	ta.SetWidth(120)
-	ta.SetHeight(5)
-	ta.CharLimit = 1000
 	ta.KeyMap.InsertNewline.SetEnabled(false)
 
 	sp := spinner.New()
@@ -112,6 +113,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	type errMsg error
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.screenWidth, m.screenHeight = msg.Width, msg.Height
+		m.width, m.height = min(m.screenWidth, modelMaxWidth), m.screenHeight
+		m.textarea.SetWidth(m.width)
+		m.textarea.SetHeight(min(m.height/5, textareaMaxHeight))
+		m.viewport.Width = m.width
+		m.viewport.Height = m.height - m.textarea.Height() - 2
+		messageRenderer, _ = glamour.NewTermRenderer(
+			glamour.WithAutoStyle(),
+			glamour.WithWordWrap(m.width),
+		)
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
@@ -159,9 +171,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	return fmt.Sprintf(
-		"\n\n%s\n\n%s",
-		m.viewport.View(),
-		m.textarea.View(),
-	) + "\n\n"
+	return lipgloss.Place(
+		m.screenWidth, m.screenHeight, lipgloss.Left, lipgloss.Center,
+		lipgloss.JoinVertical(lipgloss.Left, m.viewport.View(), "\n", m.textarea.View()),
+	)
 }
