@@ -33,6 +33,14 @@ func SetUp() {
 	viper.SetDefault("openai.model", "gpt-3.5-turbo")
 	viper.SetDefault("openai.apiKey", "")
 
+	viper.SetDefault("perplexity.url", "https://api.perplexity.ai/chat/completions")
+	viper.SetDefault("perplexity.model", "llama-3-sonar-small-32k-chat")
+	viper.SetDefault("perplexity.apiKey", "")
+
+	viper.SetDefault("moonshot.url", "https://api.moonshot.cn/v1/chat/completions")
+	viper.SetDefault("moonshot.model", "moonshot-v1-8k")
+	viper.SetDefault("moonshot.apiKey", "")
+
 	viper.SetDefault("httpProxy", "")
 	viper.SetDefault("timeOut", 30)
 
