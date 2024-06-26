@@ -16,9 +16,23 @@ import (
 	"github.com/spf13/viper"
 )
 
+type configType struct {
+	url       string
+	model     string
+	apiKey    string
+	httpProxy string
+	timeout   int
+}
+
+var config configType
+
 func SetUp() {
-	viper.SetDefault("apiKey", "")
-	viper.SetDefault("model", "gpt-3.5-turbo")
+	viper.SetDefault("profile", "openai")
+
+	viper.SetDefault("openai.url", "https://api.openai.com/v1/chat/completions")
+	viper.SetDefault("openai.model", "gpt-3.5-turbo")
+	viper.SetDefault("openai.apiKey", "")
+
 	viper.SetDefault("httpProxy", "")
 	viper.SetDefault("timeOut", 30)
 
@@ -46,44 +60,51 @@ func SetUp() {
 		}
 	}
 
-	if viper.GetString("apiKey") == "" {
+	profile := viper.GetString("profile")
+	config = configType{
+		url:       viper.GetString(profile + ".url"),
+		model:     viper.GetString(profile + ".model"),
+		apiKey:    viper.GetString(profile + ".apiKey"),
+		httpProxy: viper.GetString("httpProxy"),
+		timeout:   viper.GetInt("timeout"),
+	}
+	if config.apiKey == "" {
 		fmt.Println("Please set the apiKey before chatting with bot.")
 		os.Exit(0)
 	}
 }
 
 const (
-	apiURL     = "https://api.openai.com/v1/chat/completions"
 	apiReqBody = `{
         "model": "%s",
         "messages": %s
     }`
 )
 
-type messageStruct struct {
+type messageType struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
 
 var (
-	messages []messageStruct
+	messages []messageType
 )
 
 func Ask(input string) string {
-	messages = append(messages, messageStruct{"user", input})
+	messages = append(messages, messageType{"user", input})
 	messagesBytes, err := json.Marshal(messages)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer([]byte(fmt.Sprintf(apiReqBody, viper.GetString("model"), messagesBytes))))
+	req, err := http.NewRequest("POST", config.url, bytes.NewBuffer([]byte(fmt.Sprintf(apiReqBody, config.model, messagesBytes))))
 	if err != nil {
 		log.Fatal(err)
 	}
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", viper.GetString("apiKey")))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", config.apiKey))
 
-	proxyUrl, err := url.Parse(viper.GetString("httpProxy"))
+	proxyUrl, err := url.Parse(config.httpProxy)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -91,7 +112,7 @@ func Ask(input string) string {
 		Transport: &http.Transport{
 			Proxy: http.ProxyURL(proxyUrl),
 		},
-		Timeout: time.Duration(viper.GetInt("timeOut") * int(time.Second)),
+		Timeout: time.Duration(config.timeout * int(time.Second)),
 	}).Do(req)
 	if err != nil {
 		log.Fatal(err)
@@ -119,9 +140,9 @@ func Ask(input string) string {
 	}
 
 	output := apiRes.Choices[0].Message.Content
-	messages = append(messages, messageStruct{"assistant", output})
+	messages = append(messages, messageType{"assistant", output})
 
 	return output
 }
 
-func GetModel() string { return viper.GetString("model") }
+func GetModel() string { return config.model }
