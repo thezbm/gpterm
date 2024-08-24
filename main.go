@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gabezbm/gpterm/bot"
+	"github.com/thezbm/gpterm/bot"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"

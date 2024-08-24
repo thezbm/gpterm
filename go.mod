@@ -1,4 +1,4 @@
-module github.com/gabezbm/gpterm
+module github.com/thezbm/gpterm
 
 go 1.21.10
 
